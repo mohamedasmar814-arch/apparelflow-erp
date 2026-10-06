@@ -17,12 +17,20 @@ enum OrderStatus {
   CUTTING
   PENDING_VERIFICATION
   READY
+  REJECTED
+  SEWING
 }
 
 enum VerificationStatus {
   PENDING
-  VERIFIED
-  SHORTAGE
+  GREEN
+  YELLOW
+  RED
+}
+
+enum VerificationDecision {
+  APPROVED
+  REJECTED
 }
 
 model User {
@@ -33,28 +41,33 @@ model User {
   role      Role
   createdAt DateTime @default(now())
 
-  createdOrders     CuttingOrder[]    @relation("CreatedOrders")
+  createdOrders     CuttingOrder[]            @relation("CreatedOrders")
+  verifiedOrders    CuttingOrder[]            @relation("VerifiedOrders")
   verificationLogs VerificationLog[]
+  batchAudits       BatchVerificationAudit[]
 }
 
 model Recipe {
-  id          Int      @id @default(autoincrement())
-  styleCode   String   @unique
-  styleName   String
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                    Int      @id @default(autoincrement())
+  styleCode             String   @unique
+  styleName             String
+  description           String?
+  standardFabricPerUnit Float
+  wastageCap            Float
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   components RecipeComponent[]
   orders     CuttingOrder[]
 }
 
 model RecipeComponent {
-  id            Int    @id @default(autoincrement())
-  name          String
-  requiredQty   Int
-  recipeId      Int
-  recipe        Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  id          Int    @id @default(autoincrement())
+  name        String
+  requiredQty Int
+  recipeId    Int
+
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
 
   verificationItems VerificationItem[]
 
@@ -62,18 +75,32 @@ model RecipeComponent {
 }
 
 model CuttingOrder {
-  id          Int         @id @default(autoincrement())
-  batchNumber String      @unique
-  quantity    Int
-  status      OrderStatus @default(CUTTING)
+  id               Int         @id @default(autoincrement())
+  batchNumber      String      @unique
+  quantity         Int
+  fabricRollId     String
+  actualFabricUsed Float
+  status           OrderStatus @default(CUTTING)
+
   recipeId    Int
   createdById Int
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
 
-  recipe            Recipe             @relation(fields: [recipeId], references: [id])
-  createdBy         User               @relation("CreatedOrders", fields: [createdById], references: [id])
+  verifiedById Int?
+  verifiedAt   DateTime?
+
+  rejectionReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  recipe Recipe @relation(fields: [recipeId], references: [id])
+
+  createdBy User @relation("CreatedOrders", fields: [createdById], references: [id])
+
+  verifiedBy User? @relation("VerifiedOrders", fields: [verifiedById], references: [id])
+
   verificationItems VerificationItem[]
+  batchAudits       BatchVerificationAudit[]
 }
 
 model VerificationItem {
@@ -85,23 +112,67 @@ model VerificationItem {
   recipeComponentId Int
   updatedAt         DateTime           @updatedAt
 
-  cuttingOrder    CuttingOrder    @relation(fields: [cuttingOrderId], references: [id], onDelete: Cascade)
+  cuttingOrder CuttingOrder @relation(fields: [cuttingOrderId], references: [id], onDelete: Cascade)
+
   recipeComponent RecipeComponent @relation(fields: [recipeComponentId], references: [id])
-  logs            VerificationLog[]
+
+  logs VerificationLog[]
 
   @@unique([cuttingOrderId, recipeComponentId])
 }
 
 model VerificationLog {
-  id                 Int                @id @default(autoincrement())
+  id                 Int                 @id @default(autoincrement())
   verificationItemId Int
   verifierId         Int
   previousStatus     VerificationStatus?
   newStatus          VerificationStatus
   actualQty          Int?
   note               String?
-  createdAt          DateTime           @default(now())
+  createdAt          DateTime            @default(now())
 
   verificationItem VerificationItem @relation(fields: [verificationItemId], references: [id], onDelete: Cascade)
-  verifier         User             @relation(fields: [verifierId], references: [id])
+
+  verifier User @relation(fields: [verifierId], references: [id])
+}
+
+model BatchVerificationAudit {
+  id Int @id @default(autoincrement())
+
+  cuttingOrderId Int
+  verifierId     Int
+
+  decision VerificationDecision
+
+  rejectionReason String?
+
+  actualFabricUsed       Float
+  standardFabricExpected Float
+  wastagePercentage      Float
+
+  createdAt DateTime @default(now())
+
+  cuttingOrder CuttingOrder @relation(fields: [cuttingOrderId], references: [id], onDelete: Cascade)
+
+  verifier User @relation(fields: [verifierId], references: [id])
+
+  items BatchVerificationAuditItem[]
+}
+
+model BatchVerificationAuditItem {
+  id Int @id @default(autoincrement())
+
+  auditId Int
+
+  // Immutable snapshot of component verification at final decision time
+  componentName String
+  expectedQty   Int
+  actualQty     Int?
+  status        VerificationStatus
+
+  createdAt DateTime @default(now())
+
+  audit BatchVerificationAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
+
+  @@index([auditId])
 }

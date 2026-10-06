@@ -1,36 +1,665 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ApparelFlow ERP
 
-## Getting Started
+ApparelFlow ERP is a garment production workflow management system developed as part of the Webtezza internship technical assessment.
 
-First, run the development server:
+The system focuses on the **Production Batch Verification and Sewing Queue Gate**. It provides a controlled workflow between Cutting, Verification, and Sewing departments and prevents incomplete production batches from entering the sewing process.
+
+---
+
+## Project Overview
+
+In garment manufacturing, a cutting batch must contain the correct number of garment components before sewing can begin. Missing components can create incomplete garments, production delays, and material waste.
+
+ApparelFlow ERP solves this problem by introducing a verification gate between the Cutting and Sewing stages.
+
+The workflow is:
+
+**Cutting Supervisor → Verification Officer → Sewing Supervisor**
+
+A batch cannot enter the Sewing Queue until all required components have been verified and no component has a shortage.
+
+---
+
+## Core Features
+
+### Cutting Supervisor
+
+The Cutting Supervisor can:
+
+- Create a new cutting batch.
+- Select a predefined garment recipe.
+- Enter the target batch quantity.
+- Enter the Fabric Roll ID.
+- Record actual fabric usage in yards.
+- Automatically generate expected component quantities from the recipe BOM.
+- View batch status and fabric wastage.
+- View rejected batches and rejection reasons.
+- Re-submit a batch after re-cutting.
+
+### Verification Officer
+
+The Verification Officer can:
+
+- View batches waiting for verification.
+- Enter the actual quantity of each garment component.
+- Compare actual quantities against expected quantities.
+- View automatic GREEN, YELLOW, and RED verification results.
+- Approve eligible batches.
+- Reject batches with a mandatory reason.
+- View recently approved and rejected batches.
+
+### Sewing Supervisor
+
+The Sewing Supervisor can:
+
+- View only approved `READY` production batches.
+- View recipe and production information.
+- View verification results.
+- View the Verification Officer responsible for approval.
+- View verification timestamps.
+- Start Sewing Assembly.
+
+After sewing assembly begins, the batch changes from `READY` to `SEWING` and is removed from the READY Sewing Queue.
+
+---
+
+## Verification Traffic-Light Rules
+
+The verification system uses the following business rules:
+
+| Condition | Status | Meaning |
+|---|---|---|
+| Actual Quantity = Expected Quantity | GREEN | Exact quantity |
+| Actual Quantity > Expected Quantity | YELLOW | Excess quantity |
+| Actual Quantity < Expected Quantity | RED | Component shortage |
+
+GREEN and YELLOW components are eligible for final approval.
+
+A RED component creates a **hard stop** and prevents batch approval.
+
+Component verification itself does not automatically approve a batch. The Verification Officer must explicitly make the final approval decision.
+
+---
+
+## Gatekeeper Rule
+
+The Production Batch Verification stage acts as the gatekeeper between Cutting and Sewing.
+
+A batch can be approved only when:
+
+1. Verification components exist.
+2. Every component has been verified.
+3. No component has `PENDING` status.
+4. No component has `RED` status.
+5. The Verification Officer explicitly approves the batch.
+
+The approval restriction is enforced on the backend as well as represented in the user interface. Therefore, bypassing a disabled UI button cannot allow a RED batch into the Sewing Queue.
+
+Approved batches receive the `READY` status.
+
+Only `READY` batches are eligible for the Sewing Queue.
+
+---
+
+## Recipe BOMs
+
+### REC-BL01 — Casual Blouse
+
+Standard fabric usage:
+
+`1.8 yards per piece`
+
+Wastage cap:
+
+`5%`
+
+Components:
+
+| Component | Quantity Per Garment |
+|---|---:|
+| Front Panel | 1 |
+| Back Panel | 1 |
+| Sleeve | 2 |
+| Collar | 1 |
+| Sleeve Cuffs | 2 |
+
+### REC-CT02 — Crop Top
+
+Standard fabric usage:
+
+`1.1 yards per piece`
+
+Wastage cap:
+
+`8%`
+
+Components:
+
+| Component | Quantity Per Garment |
+|---|---:|
+| Front Panel | 1 |
+| Back Panel | 1 |
+| Sleeve | 2 |
+| Neckline Binding | 1 |
+| Waistband | 1 |
+
+Expected component quantity is calculated using:
+
+```text
+Expected Quantity = Target Batch Quantity × Component Multiplier
+```
+
+Example:
+
+For 10 Casual Blouses:
+
+```text
+Sleeves = 10 × 2 = 20
+```
+
+---
+
+## Fabric Wastage Calculation
+
+Expected fabric usage is calculated using:
+
+```text
+Expected Fabric = Standard Fabric Per Unit × Batch Quantity
+```
+
+Fabric wastage percentage is calculated using:
+
+```text
+Wastage % =
+((Actual Fabric Used - Expected Fabric) / Expected Fabric) × 100
+```
+
+The system displays the calculated wastage together with the recipe wastage cap for production visibility.
+
+---
+
+## Role-Based Access Control
+
+ApparelFlow ERP implements server-side Role-Based Access Control (RBAC).
+
+Three roles are available:
+
+| Role | Authorized Workflow |
+|---|---|
+| Cutting Supervisor | Cutting batch management |
+| Verification Officer | Component verification and final batch decisions |
+| Sewing Supervisor | Sewing Queue and assembly start |
+
+Authorization checks are performed on the server. A user cannot gain access to another production workflow simply by navigating directly to its URL.
+
+---
+
+## Demo Credentials
+
+The login page provides visible demo role selection.
+
+All demo accounts use the following password:
+
+```text
+ApparelFlow123!
+```
+
+### Cutting Supervisor
+
+```text
+Email: cutting@apparelflow.com
+Password: ApparelFlow123!
+```
+
+### Verification Officer
+
+```text
+Email: verification@apparelflow.com
+Password: ApparelFlow123!
+```
+
+### Sewing Supervisor
+
+```text
+Email: sewing@apparelflow.com
+Password: ApparelFlow123!
+```
+
+These credentials are intended for assessment/demo purposes only.
+
+---
+
+## Authentication
+
+Authentication uses:
+
+- Database-backed user accounts.
+- Password hashing with `bcryptjs`.
+- JWT-based sessions using `jose`.
+- HTTP-only session cookies.
+- Server-side role authorization.
+
+The application does not rely only on client-side role checks.
+
+---
+
+## Database
+
+The project uses **PostgreSQL** as the persistent relational database and **Prisma ORM** for database access and migrations.
+
+Main database entities include:
+
+- `User`
+- `Recipe`
+- `RecipeComponent`
+- `CuttingOrder`
+- `VerificationItem`
+- `VerificationLog`
+- `BatchVerificationAudit`
+- `BatchVerificationAuditItem`
+
+### Relationship Overview
+
+```text
+User
+ │
+ ├── creates ──────────────> CuttingOrder
+ │
+ ├── verifies ─────────────> CuttingOrder
+ │
+ ├── VerificationLog
+ │
+ └── BatchVerificationAudit
+
+Recipe
+ │
+ ├── RecipeComponent
+ │
+ └── CuttingOrder
+        │
+        ├── VerificationItem
+        │      │
+        │      └── VerificationLog
+        │
+        └── BatchVerificationAudit
+                 │
+                 └── BatchVerificationAuditItem
+```
+
+---
+
+## Immutable Verification Audit
+
+Final approval and rejection decisions create audit records.
+
+A final audit stores information including:
+
+- Production batch.
+- Verification Officer.
+- Approval or rejection decision.
+- Rejection reason when applicable.
+- Actual fabric usage.
+- Expected standard fabric usage.
+- Wastage percentage.
+- Decision timestamp.
+
+Each final audit also stores component snapshots containing:
+
+- Component name.
+- Expected quantity.
+- Actual quantity.
+- Verification status.
+
+These snapshots preserve the component state at the time the final decision was made.
+
+Normal workflow operations do not update these historical audit snapshots.
+
+---
+
+## Batch Status Workflow
+
+The primary production flow is:
+
+```text
+CUTTING
+   │
+   ▼
+PENDING_VERIFICATION
+   │
+   ├──── Reject ────> REJECTED
+   │                     │
+   │                     │ Re-cut and Resubmit
+   │                     ▼
+   │              PENDING_VERIFICATION
+   │
+   └──── Approve ──> READY
+                         │
+                         │ Start Sewing Assembly
+                         ▼
+                       SEWING
+```
+
+A rejected batch can be returned for re-cutting and then submitted for verification again.
+
+---
+
+## Sewing Queue Isolation
+
+The Sewing Queue is protected by production status.
+
+Only batches with:
+
+```text
+status = READY
+```
+
+are eligible for the READY Sewing Queue.
+
+`PENDING_VERIFICATION`, `REJECTED`, `CUTTING`, and `SEWING` batches are excluded.
+
+This ensures that unapproved or incomplete batches cannot enter the READY sewing workflow.
+
+---
+
+## Defensive Validation
+
+The application performs server-side validation for critical production inputs, including:
+
+- Valid database IDs.
+- Positive batch quantities.
+- Valid numeric fabric usage.
+- Whole-number component quantities.
+- Non-negative actual component quantities.
+- Mandatory rejection reasons.
+- Valid batch workflow state.
+- User authentication.
+- User role authorization.
+
+Client-side validation is used for usability, but critical business rules are also enforced on the server.
+
+---
+
+## Automated Testing
+
+The project uses **Vitest** for automated business-rule testing.
+
+Run the automated tests using:
+
+```bash
+npm test
+```
+
+The automated test suite covers the required workflow scenarios:
+
+1. Successful approval when components are GREEN/YELLOW.
+2. Approval blocked when any component is RED.
+3. Rejection prevented when no rejection reason is provided.
+4. Unauthorized roles prevented from component verification.
+5. Sewing Queue eligibility restricted to READY batches.
+
+Additional tests verify:
+
+- Equal quantity produces GREEN.
+- Excess quantity produces YELLOW.
+- Shortage produces RED.
+
+Current test result:
+
+```text
+Test Files  1 passed
+Tests       8 passed
+```
+
+The tested production-rule functions are used by the application's verification workflow.
+
+---
+
+## Technology Stack
+
+### Frontend
+
+- Next.js 16
+- React 19
+- TypeScript
+- Tailwind CSS
+
+### Backend
+
+- Next.js Server Actions
+- TypeScript
+- Prisma ORM
+
+### Database
+
+- PostgreSQL
+
+### Authentication and Security
+
+- bcryptjs
+- jose
+- HTTP-only cookies
+- Server-side RBAC
+
+### Testing
+
+- Vitest
+
+### Development Tools
+
+- Visual Studio Code
+- Git
+- GitHub
+- npm
+
+---
+
+## Project Structure
+
+```text
+apparelflow-erp/
+│
+├── app/
+│   ├── cutting/
+│   ├── verification/
+│   ├── sewing/
+│   ├── login/
+│   ├── logout/
+│   ├── generated/
+│   └── page.tsx
+│
+├── lib/
+│   ├── auth.ts
+│   ├── prisma.ts
+│   └── production-rules.ts
+│
+├── prisma/
+│   ├── migrations/
+│   ├── schema.prisma
+│   └── seed.ts
+│
+├── tests/
+│   └── production-rules.test.ts
+│
+├── AI_OPTIMIZATION_REPORT.md
+├── package.json
+└── README.md
+```
+
+---
+
+## Local Installation
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/mohamedasmar814-arch/apparelflow-erp.git
+cd apparelflow-erp
+```
+
+### 2. Install dependencies
+
+```bash
+npm install
+```
+
+### 3. Configure environment variables
+
+Create a `.env` file in the project root.
+
+Example:
+
+```env
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE"
+SESSION_SECRET="replace-with-a-secure-secret"
+```
+
+Do not commit the `.env` file or production credentials to GitHub.
+
+### 4. Generate the Prisma Client
+
+```bash
+npx prisma generate
+```
+
+### 5. Apply database migrations
+
+For development:
+
+```bash
+npx prisma migrate dev
+```
+
+For a production environment:
+
+```bash
+npx prisma migrate deploy
+```
+
+### 6. Seed demo data
+
+```bash
+npx prisma db seed
+```
+
+### 7. Start the development server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open the application locally at:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```text
+http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The root route redirects to the ApparelFlow login page.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## Available Commands
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Starts the development server.
 
-## Deploy on Vercel
+```bash
+npm run build
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Creates an optimized production build.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm start
+```
+
+Starts the production server after a successful build.
+
+```bash
+npm run lint
+```
+
+Runs ESLint.
+
+```bash
+npm test
+```
+
+Runs the automated Vitest test suite.
+
+---
+
+## Production Build Verification
+
+The application has been verified using:
+
+```bash
+npm run build
+```
+
+The production build successfully compiles the following application routes:
+
+```text
+/
+/login
+/cutting
+/verification
+/sewing
+```
+
+---
+
+## Security Considerations
+
+The application includes several controls designed to protect workflow integrity:
+
+- Passwords are stored as hashes rather than plain text.
+- Session cookies are HTTP-only.
+- Production deployments use secure cookies.
+- RBAC is enforced on server actions and protected pages.
+- Critical numeric inputs are validated server-side.
+- RED component shortages are blocked by backend approval logic.
+- Final decisions are stored in audit records.
+- Database state checks help prevent duplicate final decisions.
+- Environment secrets are excluded from source control.
+
+---
+
+## AI-Assisted Development
+
+AI tools were used during development to support code review, debugging, business-rule validation, testing strategy, and documentation.
+
+The use of AI and the optimization process are documented separately in:
+
+```text
+AI_OPTIMIZATION_REPORT.md
+```
+
+---
+
+## Author
+
+**Mohamed Asmar**
+
+ApparelFlow ERP  
+Webtezza Internship Technical Assessment
+
+---
+
+## Repository
+
+GitHub repository:
+
+```text
+https://github.com/mohamedasmar814-arch/apparelflow-erp
+```
+
+---
+
+## Deployment
+
+The application is designed for deployment using a cloud-hosted PostgreSQL database and a Next.js-compatible hosting platform.
+
+The production deployment URL will be added here after deployment.

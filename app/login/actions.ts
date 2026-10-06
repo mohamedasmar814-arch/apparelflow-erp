@@ -1,12 +1,12 @@
 "use server";
 
 import bcrypt from "bcryptjs";
-import { redirect } from "next/navigation";
 import { prisma } from "../../lib/prisma";
 import { createSession } from "../../lib/auth";
 
 export type LoginState = {
   error: string;
+  redirectTo?: string;
 };
 
 export async function loginAction(
@@ -19,14 +19,12 @@ export async function loginAction(
 
   const password = String(formData.get("password") ?? "");
 
-  // Basic validation
   if (!email || !password) {
     return {
       error: "Email and password are required.",
     };
   }
 
-  // Find the user in PostgreSQL
   const user = await prisma.user.findUnique({
     where: {
       email,
@@ -39,8 +37,10 @@ export async function loginAction(
     };
   }
 
-  // Compare entered password with stored bcrypt hash
-  const passwordMatches = await bcrypt.compare(password, user.password);
+  const passwordMatches = await bcrypt.compare(
+    password,
+    user.password
+  );
 
   if (!passwordMatches) {
     return {
@@ -48,7 +48,6 @@ export async function loginAction(
     };
   }
 
-  // Create secure login session
   await createSession({
     userId: user.id,
     name: user.name,
@@ -56,18 +55,28 @@ export async function loginAction(
     role: user.role,
   });
 
-  // Redirect according to the user's role
   switch (user.role) {
     case "CUTTING":
-      redirect("/cutting");
+      return {
+        error: "",
+        redirectTo: "/cutting",
+      };
 
     case "VERIFICATION":
-      redirect("/verification");
+      return {
+        error: "",
+        redirectTo: "/verification",
+      };
 
     case "SEWING":
-      redirect("/sewing");
+      return {
+        error: "",
+        redirectTo: "/sewing",
+      };
 
     default:
-      redirect("/login");
+      return {
+        error: "Your account does not have a valid system role.",
+      };
   }
 }
