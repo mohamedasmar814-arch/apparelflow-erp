@@ -41,8 +41,8 @@ model User {
   role      Role
   createdAt DateTime @default(now())
 
-  createdOrders     CuttingOrder[]            @relation("CreatedOrders")
-  verifiedOrders    CuttingOrder[]            @relation("VerifiedOrders")
+  createdOrders     CuttingOrder[]           @relation("CreatedOrders")
+  verifiedOrders    CuttingOrder[]           @relation("VerifiedOrders")
   verificationLogs VerificationLog[]
   batchAudits       BatchVerificationAudit[]
 }
@@ -51,6 +51,7 @@ model Recipe {
   id                    Int      @id @default(autoincrement())
   styleCode             String   @unique
   styleName             String
+  category              String
   description           String?
   standardFabricPerUnit Float
   wastageCap            Float
@@ -62,9 +63,10 @@ model Recipe {
 }
 
 model RecipeComponent {
-  id          Int    @id @default(autoincrement())
+  id          Int     @id @default(autoincrement())
   name        String
   requiredQty Int
+  imageUrl    String?
   recipeId    Int
 
   recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)

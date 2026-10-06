@@ -61,7 +61,7 @@ async function renameExistingComponent(
   }
 
   // Already corrected database:
-  // Just make sure the multiplier is correct.
+  // Make sure the multiplier remains correct.
   if (newComponent) {
     await prisma.recipeComponent.update({
       where: {
@@ -117,12 +117,12 @@ async function main() {
       email: "verification@apparelflow.com",
     },
     update: {
-      name: "Verification Officer",
+      name: "Cutting Verifier",
       password: passwordHash,
       role: Role.VERIFICATION,
     },
     create: {
-      name: "Verification Officer",
+      name: "Cutting Verifier",
       email: "verification@apparelflow.com",
       password: passwordHash,
       role: Role.VERIFICATION,
@@ -148,6 +148,7 @@ async function main() {
 
   // -------------------------------------------------------
   // CASUAL BLOUSE — REC-BL01
+  // Category: Blouse
   // Standard fabric: 1.8 yards per garment
   // Wastage cap: 5%
   // -------------------------------------------------------
@@ -158,6 +159,7 @@ async function main() {
     },
     update: {
       styleName: "Casual Blouse",
+      category: "Blouse",
       description: "Casual blouse production recipe",
       standardFabricPerUnit: 1.8,
       wastageCap: 5,
@@ -165,6 +167,7 @@ async function main() {
     create: {
       styleCode: "REC-BL01",
       styleName: "Casual Blouse",
+      category: "Blouse",
       description: "Casual blouse production recipe",
       standardFabricPerUnit: 1.8,
       wastageCap: 5,
@@ -208,6 +211,7 @@ async function main() {
 
   // -------------------------------------------------------
   // CROP TOP — REC-CT02
+  // Category: Crop Top
   // Standard fabric: 1.1 yards per garment
   // Wastage cap: 8%
   // -------------------------------------------------------
@@ -218,6 +222,7 @@ async function main() {
     },
     update: {
       styleName: "Crop Top",
+      category: "Crop Top",
       description: "Crop top production recipe",
       standardFabricPerUnit: 1.1,
       wastageCap: 8,
@@ -225,6 +230,7 @@ async function main() {
     create: {
       styleCode: "REC-CT02",
       styleName: "Crop Top",
+      category: "Crop Top",
       description: "Crop top production recipe",
       standardFabricPerUnit: 1.1,
       wastageCap: 8,
@@ -268,12 +274,12 @@ async function main() {
 
   console.log("ApparelFlow database seeded successfully.");
   console.log("");
-  console.log("Recipes synchronized with the assessment BOM.");
+  console.log("Recipes synchronized with the assessment specification.");
   console.log("");
   console.log("Demo accounts:");
-  console.log("Cutting: cutting@apparelflow.com");
-  console.log("Verification: verification@apparelflow.com");
-  console.log("Sewing: sewing@apparelflow.com");
+  console.log("Cutting Supervisor: cutting@apparelflow.com");
+  console.log("Cutting Verifier: verification@apparelflow.com");
+  console.log("Sewing Supervisor: sewing@apparelflow.com");
   console.log("Password: ApparelFlow123!");
 }
 
