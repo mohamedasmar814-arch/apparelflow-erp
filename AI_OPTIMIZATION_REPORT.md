@@ -1,226 +1,556 @@
 # AI Optimization Report — ApparelFlow ERP
 
-## 1. Introduction
+## Introduction
 
 ApparelFlow ERP was developed for the Webtezza internship technical assessment, focusing on the **Production Batch Verification and Sewing Queue Gate**.
 
-AI-assisted development was used during the project to support requirement analysis, implementation planning, debugging, code review, testing, and documentation.
+AI-assisted development was used throughout the project to support requirement interpretation, architecture planning, debugging, code review, testing, database design, security review, and documentation.
 
-AI-generated suggestions were not treated as automatically correct. Important business rules and implementation decisions were reviewed against the assessment requirements and validated through application testing.
+AI-generated suggestions were not treated as automatically correct. Suggestions were reviewed against the assessment specification and then validated through code review, automated testing, manual workflow testing, database inspection, and production builds.
 
----
+This report documents four key areas of AI-assisted development:
 
-## 2. Areas Where AI Was Used
-
-AI assistance was mainly used in the following areas:
-
-- Understanding and breaking down the assessment requirements.
-- Planning the application architecture.
-- Designing the relational database structure.
-- Reviewing Prisma models and migrations.
-- Implementing authentication and Role-Based Access Control.
-- Developing the Cutting, Verification, and Sewing workflows.
-- Reviewing the production gatekeeper logic.
-- Debugging Next.js and Prisma issues.
-- Improving input validation.
-- Designing automated tests.
-- Reviewing audit-trail requirements.
-- Improving project documentation.
-- Preparing the application for deployment.
+1. Tools & Prompting
+2. Flawed/Broken AI Code Instances
+3. Human Refactoring
+4. Defensive Architecture
 
 ---
 
-## 3. Requirement Analysis
+# 1. Tools & Prompting
 
-One of the most important uses of AI was converting the assessment specification into clear technical requirements.
+## 1.1 AI Tool Used
 
-The production workflow was identified as:
+ChatGPT was used as an AI-assisted software development tool during the implementation of ApparelFlow ERP.
+
+The development environment and supporting technologies included:
+
+- Visual Studio Code
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- Prisma ORM
+- PostgreSQL
+- Neon PostgreSQL
+- Railway
+- Git
+- GitHub
+- Vitest
+- npm
+
+AI assistance was used as a development support mechanism rather than as an autonomous replacement for developer decision-making.
+
+---
+
+## 1.2 Requirement Analysis Prompts
+
+One of the first uses of AI was breaking the assessment specification into technical requirements.
+
+The assessment was interpreted into the following core workflow:
 
 ```text
-Cutting
-   ↓
-Pending Verification
-   ↓
-Verification Gate
-   ↓
-Ready for Sewing
-   ↓
-Sewing
-```
-
-The assessment's most important business rule was identified as the verification hard stop:
-
-```text
-If any component is RED,
-the production batch must not be approved.
-```
-
-This requirement was implemented on the backend rather than relying only on the user interface.
-
----
-
-## 4. Database Design Optimization
-
-AI assistance was used to review the relational database design.
-
-The database was separated into entities including:
-
-- User
-- Recipe
-- RecipeComponent
-- CuttingOrder
-- VerificationItem
-- VerificationLog
-- BatchVerificationAudit
-- BatchVerificationAuditItem
-
-This structure avoids storing all production information in a single table and allows the system to maintain relationships between users, recipes, production batches, verification results, and audit history.
-
-Prisma ORM was used to manage the PostgreSQL schema and migrations.
-
----
-
-## 5. Verification Logic Optimization
-
-The verification rules were separated into reusable production-rule functions.
-
-The three traffic-light conditions are:
-
-```text
-Actual = Expected  → GREEN
-Actual > Expected  → YELLOW
-Actual < Expected  → RED
-```
-
-This made the rules easier to understand and test.
-
-The application also separates component verification from final approval. A batch does not automatically become READY simply because all components have been checked.
-
-The Verification Officer must explicitly approve the batch.
-
----
-
-## 6. Gatekeeper Optimization
-
-The approval gate was treated as a critical part of the application.
-
-A batch cannot be approved when:
-
-- No verification components exist.
-- Any component remains PENDING.
-- Any component is RED.
-
-GREEN and YELLOW components are acceptable for approval.
-
-The user interface disables approval when the batch is not eligible, but the same restriction is also enforced on the server.
-
-This prevents a user from bypassing the production rule by manipulating the browser interface.
-
----
-
-## 7. Role-Based Access Control Optimization
-
-The application uses three production roles:
-
-```text
-CUTTING
-VERIFICATION
+Cutting Supervisor
+        ↓
+Create Cutting Batch
+        ↓
+PENDING_VERIFICATION
+        ↓
+Cutting Verifier
+        ↓
+Component Count QC
+        ↓
+GREEN / YELLOW / RED
+        ↓
+Approve or Reject
+        ↓
+READY
+        ↓
+Sewing Supervisor
+        ↓
+Start Sewing Assembly
+        ↓
 SEWING
 ```
 
-AI assistance was used to review authorization checks so that important operations are protected on the server.
+Example prompt intention:
 
-Examples include:
+```text
+Review the ApparelFlow assessment requirements and identify the
+database entities, user roles, production states, verification rules,
+security controls, and hard-stop conditions required by the system.
+```
 
-- Only the Cutting Supervisor can create production batches.
-- Only the Verification Officer can verify components.
-- Only the Verification Officer can approve or reject batches.
-- Only the Sewing Supervisor can start sewing assembly.
-
-This is more secure than relying only on hidden buttons or client-side navigation restrictions.
-
----
-
-## 8. Audit Trail Optimization
-
-During development, the audit design was strengthened to preserve the final state of component verification.
-
-The final audit records:
-
-- Verification Officer identity.
-- Final decision.
-- Decision timestamp.
-- Rejection reason when applicable.
-- Actual fabric usage.
-- Expected fabric usage.
-- Wastage percentage.
-
-A separate component snapshot records:
-
-- Component name.
-- Expected quantity.
-- Actual quantity.
-- Verification status.
-
-This means the final decision can be reviewed later without depending only on the current mutable state of the production batch.
+This helped translate the business requirements into implementation tasks.
 
 ---
 
-## 9. Transaction Safety
+## 1.3 Database Design Prompts
 
-Final approval and rejection operations use database transactions.
+AI assistance was used to review the relational database structure required to support the production workflow.
 
-For approval, the system performs the batch status update and audit creation together.
+Example prompt intention:
+
+```text
+Design a relational Prisma schema for ApparelFlow ERP that supports
+users, garment recipes, recipe components, cutting batches,
+component verification, immutable verification audits, and the
+Sewing Queue.
+```
+
+The final database design contains entities including:
+
+- `User`
+- `Recipe`
+- `RecipeComponent`
+- `CuttingOrder`
+- `VerificationItem`
+- `VerificationLog`
+- `BatchVerificationAudit`
+- `BatchVerificationAuditItem`
+
+The database design was reviewed manually before migrations were applied.
+
+---
+
+## 1.4 Verification Logic Prompts
+
+AI was used to reason about the required component verification rules.
+
+The required traffic-light rules are:
+
+```text
+Actual Quantity = Expected Quantity → GREEN
+Actual Quantity > Expected Quantity → YELLOW
+Actual Quantity < Expected Quantity → RED
+```
+
+Expected component quantities are calculated using:
+
+```text
+Expected Quantity =
+Target Batch Quantity × Component Multiplier
+```
+
+Example prompt intention:
+
+```text
+Create reusable TypeScript business-rule functions for component
+verification where equal quantities are GREEN, excess quantities are
+YELLOW, shortages are RED, and any RED component prevents approval.
+```
+
+The resulting logic was separated into reusable production-rule functions so that the same business rules could be tested independently.
+
+---
+
+## 1.5 Authentication and RBAC Prompts
+
+AI assistance was used to review authentication and authorization requirements.
+
+Example prompt intention:
+
+```text
+Implement secure role-based access control for Cutting Supervisor,
+Cutting Verifier, and Sewing Supervisor. Critical authorization
+must be enforced on the server rather than only through hidden UI
+elements.
+```
+
+The application ultimately uses:
+
+- Database-backed user accounts
+- bcrypt password hashing
+- JWT-based sessions
+- HTTP-only cookies
+- Server-side role validation
+- Protected workflow actions
+
+---
+
+## 1.6 Testing Prompts
+
+AI assistance was used to identify important automated test scenarios.
+
+Example prompt intention:
+
+```text
+Create automated tests for the ApparelFlow verification rules,
+including successful approval eligibility, RED shortage blocking,
+mandatory rejection reasons, unauthorized verification attempts,
+and Sewing Queue isolation.
+```
+
+Vitest was used for the automated test suite.
+
+The final suite contains eight automated tests.
+
+---
+
+## 1.7 Documentation and Deployment Prompts
+
+AI was also used to review:
+
+- README documentation
+- Environment configuration
+- Prisma Client generation
+- Railway deployment
+- Neon database configuration
+- Production build errors
+- Git commit organization
+- AI-assisted development documentation
+
+All generated recommendations were reviewed before being applied.
+
+---
+
+# 2. Flawed/Broken AI Code Instances
+
+AI-generated or AI-assisted solutions were not always correct on the first attempt. Several issues required human review and correction.
+
+The following examples demonstrate why AI output was not accepted without validation.
+
+---
+
+## 2.1 Flawed AI Instance 1 — Prisma Schema Formatting
+
+### Problem
+
+During development, an AI-assisted Prisma schema modification contained relation formatting that was not accepted correctly by the Prisma parser.
+
+The proposed structure looked logically reasonable but failed Prisma validation.
+
+This demonstrated that syntactically plausible AI-generated code is not necessarily valid for the exact installed framework version.
+
+### Detection
+
+The problem was identified when Prisma validation/migration commands rejected the schema.
+
+The schema was then reviewed manually rather than forcing the migration.
+
+### Human Correction
+
+The Prisma relation definitions were corrected according to the actual project schema and Prisma version.
+
+After the correction, the schema was validated again before database migrations were applied.
+
+### Lesson
+
+AI-generated ORM code must be checked using the ORM's own validation tools before being allowed to modify a persistent database.
+
+---
+
+## 2.2 Flawed AI Instance 2 — Authentication Navigation
+
+### Problem
+
+An earlier login implementation successfully authenticated the user but did not always navigate reliably to the role-specific dashboard.
+
+The browser could remain visually stuck in a signing-in state even though authentication had succeeded.
+
+### Detection
+
+This issue was discovered through manual browser testing rather than compilation.
+
+The code could compile successfully while still producing incorrect runtime behaviour.
+
+### Human Correction
+
+The login navigation strategy was changed to perform a full browser navigation after successful authentication.
+
+The authentication flow was then manually tested with:
+
+- Cutting Supervisor
+- Cutting Verifier
+- Sewing Supervisor
+
+Server-side session validation remained responsible for determining authorized access.
+
+### Lesson
+
+Successful compilation does not prove that an authentication workflow behaves correctly in the browser.
+
+Runtime testing was necessary.
+
+---
+
+## 2.3 Flawed AI Instance 3 — Incomplete Audit Design
+
+### Problem
+
+An earlier audit design focused mainly on batch-level information.
+
+It recorded information such as:
+
+- Verifier
+- Decision
+- Timestamp
+- Fabric usage
+- Wastage
+
+However, this was insufficient for preserving the exact component state at the moment of final approval or rejection.
+
+If component information changed later, relying only on current verification records would weaken the historical audit trail.
+
+### Human Correction
+
+A dedicated component-level immutable snapshot model was added:
+
+```text
+BatchVerificationAuditItem
+```
+
+Each final audit can therefore preserve:
+
+- Component name
+- Expected quantity
+- Actual quantity
+- Verification status
+
+This means the historical verification decision does not depend entirely on mutable current-state records.
+
+### Lesson
+
+AI-generated database designs must be evaluated against business audit requirements, not simply against whether the database can store data.
+
+---
+
+## 2.4 Flawed AI Instance 4 — Dependency Compatibility
+
+### Problem
+
+During automated testing setup, a newer Vitest dependency recommendation created compatibility problems with the project's existing dependency environment.
+
+Forcing installation could have destabilized the application.
+
+### Human Correction
+
+Instead of forcing incompatible dependencies, a compatible Vitest version was selected.
+
+The final project uses:
+
+```text
+Vitest 3.2.4
+```
+
+The automated tests then ran successfully.
+
+### Lesson
+
+AI-generated dependency recommendations should never be installed blindly.
+
+The existing Node.js, TypeScript, framework, and package versions must be considered.
+
+---
+
+## 2.5 Flawed AI Instance 5 — Recipe BOM Naming
+
+### Problem
+
+An earlier implementation used component names that did not exactly match the final assessment specification.
+
+For example, earlier names included:
+
+```text
+Front Panel
+Back Panel
+Sleeve
+Collar
+```
+
+The assessment required more specific Casual Blouse component names:
+
+```text
+Front Body Panel
+Back Body Panel
+Sleeves (Left & Right)
+Collar & Stand
+Sleeve Cuffs
+```
+
+The Crop Top recipe also required:
+
+```text
+Front Chest Panel
+Back Support Panel
+Neck Binding Strip
+Hem Elastic Casing
+Side Strap Accents
+```
+
+### Human Correction
+
+The original assessment specification was reviewed again.
+
+The seed logic and project documentation were corrected to use the required component names.
+
+Instead of deleting and recreating existing production components, the existing component records were renamed while preserving their database IDs.
+
+This protected existing relational references from `VerificationItem` records.
+
+The production Neon database was also updated and queried afterward to confirm that exactly ten required recipe component records existed.
+
+### Lesson
+
+AI interpretation of requirements must always be checked against the authoritative specification.
+
+A solution can be technically functional while still being incorrect from a business-requirement perspective.
+
+---
+
+# 3. Human Refactoring
+
+Human review was used throughout the project to convert AI-assisted suggestions into a safer and more maintainable implementation.
+
+---
+
+## 3.1 Separating Business Rules
+
+Verification logic was extracted into reusable functions rather than duplicating conditions throughout UI components.
+
+The production rules include functions for:
+
+- Traffic-light classification
+- Approval eligibility
+- Rejection reason validation
+- Verification role authorization
+- Sewing Queue eligibility
+
+This improved maintainability and made automated testing easier.
+
+---
+
+## 3.2 Strengthening the Approval Gate
+
+A major refactoring decision was ensuring that the verification gate did not exist only in the user interface.
+
+The UI disables approval when a RED or PENDING component exists.
+
+However, the server independently checks the same condition.
+
+The effective rule is:
+
+```text
+IF
+    verification items exist
+AND every item has been counted
+AND no item is PENDING
+AND no item is RED
+THEN
+    approval may continue
+ELSE
+    approval is rejected
+```
+
+This protects the workflow even if a user attempts to bypass the browser interface.
+
+---
+
+## 3.3 Separating Component Verification from Final Approval
+
+A component becoming GREEN or YELLOW does not automatically release the batch to Sewing.
+
+The application requires an explicit final approval decision by the authorized verifier.
+
+This distinction was retained because component counting and final batch authorization are separate business events.
+
+---
+
+## 3.4 Improving the Audit Model
+
+The audit system was refactored from simple batch-level information into a more complete historical record.
+
+The final audit stores:
+
+- Production batch
+- Verifier identity
+- Decision
+- Decision timestamp
+- Rejection reason when applicable
+- Actual fabric usage
+- Expected fabric usage
+- Wastage percentage
+
+Component snapshots additionally store:
+
+- Component name
+- Expected quantity
+- Actual quantity
+- Verification status
+
+These snapshots are not modified by normal later workflow operations.
+
+---
+
+## 3.5 Transaction-Based Finalization
+
+Approval and rejection operations were structured using database transactions.
 
 Conceptually:
 
 ```text
 BEGIN TRANSACTION
 
-Check batch is still PENDING_VERIFICATION
+Validate current batch state
+Validate authorization
+Validate component state
 
-Change status to READY
+Update batch decision
 
-Create final audit
+Create audit record
 Create component audit snapshots
 
 COMMIT
 ```
 
-A similar transaction is used for rejection.
-
-The application also performs a database-level state check before changing the batch status. This helps prevent the same pending batch from being finalized twice.
+This prevents a partial finalization where the production status changes but the corresponding audit record is not stored.
 
 ---
 
-## 10. Defensive Validation
+## 3.6 Safe Recipe Correction
 
-AI-assisted code review helped identify places where defensive validation was necessary.
+When the recipe component names were corrected, existing component records were not simply deleted.
 
-Validation includes:
+Deleting them could have damaged relationships with existing verification data.
 
-- Positive database identifiers.
-- Positive target batch quantities.
-- Valid numeric fabric usage.
-- Whole-number component quantities.
-- Non-negative actual quantities.
-- Required rejection reason.
-- Authentication checks.
-- Role authorization.
-- Correct workflow status before state changes.
+Instead, the existing records were updated in place while preserving their IDs.
 
-Critical validation is performed on the server even when equivalent client-side validation exists.
+This approach maintained referential integrity while aligning the system with the official BOM specification.
 
 ---
 
-## 11. Sewing Queue Optimization
+## 3.7 Authentication Refactoring
 
-The Sewing Queue is designed to contain only approved production batches.
+Authentication was implemented using database-backed accounts rather than a purely visual role switcher.
 
-The eligibility rule is:
+The visible demo role selection assists the evaluator by filling appropriate credentials, but it does not bypass authentication.
+
+The final authentication flow uses:
 
 ```text
-Batch Status = READY
+User Credentials
+      ↓
+Database User Validation
+      ↓
+bcrypt Password Verification
+      ↓
+JWT Session
+      ↓
+HTTP-only Cookie
+      ↓
+Server-Side Role Validation
+```
+
+---
+
+## 3.8 Sewing Queue Refactoring
+
+The Sewing Queue was designed around database state rather than a client-side list.
+
+The eligibility condition is:
+
+```text
+status = READY
 ```
 
 Therefore:
@@ -233,252 +563,499 @@ READY                → Eligible
 SEWING               → Not in READY queue
 ```
 
-After the Sewing Supervisor starts sewing assembly, the status changes from READY to SEWING.
-
-This removes the batch from the READY Sewing Queue.
+This prevents an unapproved batch from appearing in the READY Sewing Queue.
 
 ---
 
-## 12. Authentication Improvement
+# 4. Defensive Architecture
 
-AI assistance was also used during debugging of the login workflow.
+Defensive architecture was used because the application controls a production handoff between departments.
 
-The authentication system uses:
-
-- Database-backed user accounts.
-- bcrypt password hashing.
-- JWT sessions.
-- HTTP-only cookies.
-- Server-side RBAC.
-
-During testing, client-side navigation after authentication was identified as unreliable in the development environment.
-
-The login redirect was changed to a full browser navigation after successful authentication.
-
-This provided a more reliable transition to the role-specific dashboard while preserving server-side session validation.
+Important rules therefore cannot depend only on client-side behaviour.
 
 ---
 
-## 13. Automated Testing
+## 4.1 Server-Side RBAC
 
-Vitest was introduced for automated testing.
+The application implements server-side authorization.
 
-The project currently contains eight automated tests.
+The three workflow roles are:
 
-The required assessment scenarios covered are:
+```text
+CUTTING
+VERIFICATION
+SEWING
+```
 
-1. Successful approval eligibility.
+These correspond to:
+
+```text
+Cutting Supervisor
+Cutting Verifier
+Sewing Supervisor
+```
+
+Authorization responsibilities are separated:
+
+| Role | Responsibility |
+|---|---|
+| Cutting Supervisor | Create and re-submit cutting batches |
+| Cutting Verifier | Verify components and make final decisions |
+| Sewing Supervisor | View released batches and start sewing |
+
+Direct navigation to another role's page does not grant permission to perform that role's protected actions.
+
+---
+
+## 4.2 RED Hard Stop
+
+The most important defensive production rule is the RED hard stop.
+
+```text
+Actual < Expected → RED
+```
+
+If any component is RED:
+
+```text
+Approve Batch = BLOCKED
+```
+
+This is enforced both visually and on the server.
+
+Therefore, manipulating a disabled browser button cannot legitimately release a shortage batch into the Sewing Queue.
+
+---
+
+## 4.3 PENDING Hard Stop
+
+An uncounted component is represented as PENDING.
+
+A batch containing PENDING verification items cannot be approved.
+
+This prevents incomplete count checks from being treated as completed verification.
+
+---
+
+## 4.4 Mandatory Rejection Reason
+
+Rejecting a production batch requires a reason.
+
+An empty or whitespace-only rejection reason is rejected by validation.
+
+The reason is preserved with the workflow/audit information so that Cutting personnel can understand why re-cutting is required.
+
+---
+
+## 4.5 Defensive Numeric Validation
+
+Critical production inputs are validated.
+
+Examples include:
+
+- Database IDs must be valid.
+- Target quantity must be positive.
+- Fabric usage must be numeric.
+- Component quantities must be whole numbers.
+- Component quantities cannot be negative.
+- Required fields cannot be empty.
+- Workflow transitions must occur from valid states.
+
+Client-side validation improves usability, but server-side validation remains authoritative.
+
+---
+
+## 4.6 Sewing Queue Isolation
+
+Only explicitly approved `READY` batches are queried for the READY Sewing Queue.
+
+This means a batch cannot reach Sewing simply because it exists in the database.
+
+The production state itself acts as the release gate.
+
+After **Start Sewing Assembly**, the state changes:
+
+```text
+READY → SEWING
+```
+
+The batch therefore disappears from the READY queue.
+
+---
+
+## 4.7 Immutable Verification Audit
+
+A final approval or rejection creates a server-side audit record.
+
+The verifier identity and timestamp are derived from the authenticated server-side workflow rather than being trusted as arbitrary client input.
+
+The component state is also copied into audit snapshot records.
+
+This provides historical evidence of the information used when the final decision was made.
+
+---
+
+## 4.8 Database Transaction Safety
+
+Critical finalization operations use transactions so related database changes succeed or fail together.
+
+This reduces the risk of inconsistent states such as:
+
+```text
+Batch = READY
+Audit = Missing
+```
+
+or:
+
+```text
+Batch = REJECTED
+Decision record = Missing
+```
+
+---
+
+## 4.9 Persistent Relational Database
+
+The application uses PostgreSQL rather than browser-only or temporary state.
+
+Prisma ORM manages relational database access and migrations.
+
+The production application uses a Neon-hosted PostgreSQL database.
+
+This allows workflow state to survive:
+
+- Browser refreshes
+- User logout/login
+- Application redeployment
+- Movement between production roles
+
+---
+
+# 5. Official Recipe Verification
+
+The final recipes were aligned with the assessment specification.
+
+## REC-BL01 — Casual Blouse
+
+Standard fabric:
+
+```text
+1.8 yards per piece
+```
+
+Wastage cap:
+
+```text
+5%
+```
+
+| Component | Multiplier |
+|---|---:|
+| Front Body Panel | 1 |
+| Back Body Panel | 1 |
+| Sleeves (Left & Right) | 2 |
+| Collar & Stand | 1 |
+| Sleeve Cuffs | 2 |
+
+For a batch quantity of 10:
+
+```text
+Front Body Panel       = 10
+Back Body Panel        = 10
+Sleeves (Left & Right) = 20
+Collar & Stand         = 10
+Sleeve Cuffs           = 20
+```
+
+---
+
+## REC-CT02 — Crop Top
+
+Standard fabric:
+
+```text
+1.1 yards per piece
+```
+
+Wastage cap:
+
+```text
+8%
+```
+
+| Component | Multiplier |
+|---|---:|
+| Front Chest Panel | 1 |
+| Back Support Panel | 1 |
+| Neck Binding Strip | 1 |
+| Hem Elastic Casing | 1 |
+| Side Strap Accents | 2 |
+
+For a batch quantity of 10:
+
+```text
+Front Chest Panel   = 10
+Back Support Panel  = 10
+Neck Binding Strip  = 10
+Hem Elastic Casing  = 10
+Side Strap Accents  = 20
+```
+
+---
+
+# 6. Fabric Wastage Logic
+
+Expected fabric usage is calculated using:
+
+```text
+Expected Fabric =
+Standard Fabric Per Unit × Batch Quantity
+```
+
+Fabric wastage percentage is calculated using:
+
+```text
+Wastage % =
+((Actual Fabric Used - Expected Fabric)
+ / Expected Fabric) × 100
+```
+
+Example for 10 Casual Blouses:
+
+```text
+Standard Fabric Per Unit = 1.8 yards
+Batch Quantity = 10
+
+Expected Fabric = 1.8 × 10
+                = 18.0 yards
+```
+
+If actual fabric usage is 18.5 yards:
+
+```text
+Wastage =
+((18.5 - 18.0) / 18.0) × 100
+
+= 2.78%
+```
+
+The recipe wastage cap is displayed with the calculated result.
+
+---
+
+# 7. Automated Testing
+
+Vitest was used for automated business-rule testing.
+
+The test suite contains eight tests.
+
+The core scenarios include:
+
+1. Successful approval eligibility when components contain no shortage.
 2. RED component blocks approval.
 3. Rejection without a reason is invalid.
 4. Unauthorized roles cannot verify components.
-5. Sewing Queue eligibility is limited to READY batches.
+5. Sewing Queue eligibility is restricted to READY batches.
 
-Additional tests validate the traffic-light rules:
+Additional traffic-light tests verify:
 
 6. Equal quantity produces GREEN.
 7. Excess quantity produces YELLOW.
 8. Shortage produces RED.
 
-The automated test command is:
+The test command is:
 
 ```bash
 npm test
 ```
 
-The verified result was:
+The final verified result was:
 
 ```text
 Test Files  1 passed
 Tests       8 passed
 ```
 
----
-
-## 14. Connecting Tests to Production Logic
-
-The automated tests do not use a completely separate copy of the business rules.
-
-Reusable production rules were placed in:
-
-```text
-lib/production-rules.ts
-```
-
-The real verification workflow imports these rules.
-
-For example, the production workflow uses reusable functions for:
-
-- Traffic-light classification.
-- Approval eligibility.
-- Verification role authorization.
-- Rejection reason validation.
-
-This improves maintainability because changes to these rules can be tested directly.
+The reusable business rules tested by Vitest are also used by the application's production workflow.
 
 ---
 
-## 15. Manual Testing
+# 8. Manual End-to-End Validation
 
-Automated testing was combined with manual end-to-end testing.
+Automated testing was combined with manual workflow testing.
 
-Manual testing included:
+Manual validation included:
 
-- Logging in with each demo role.
-- Creating production batches.
-- Confirming BOM calculations.
-- Recording GREEN component quantities.
-- Recording YELLOW excess quantities.
-- Recording RED shortages.
-- Confirming RED disables approval.
-- Confirming backend approval restrictions.
+- Logging in as the Cutting Supervisor.
+- Creating a production batch.
+- Checking expected BOM quantities.
+- Logging in as the Cutting Verifier.
+- Entering GREEN quantities.
+- Entering YELLOW excess quantities.
+- Creating a RED shortage.
+- Confirming RED prevents approval.
 - Attempting rejection without a reason.
 - Rejecting with a valid reason.
-- Re-submitting a rejected batch.
+- Returning the rejected batch to Cutting.
+- Re-cutting and re-submitting the batch.
+- Re-verifying component quantities.
 - Approving an eligible batch.
-- Confirming approved batches enter the Sewing Queue.
+- Confirming the approved batch enters the Sewing Queue.
+- Logging in as the Sewing Supervisor.
 - Starting Sewing Assembly.
-- Confirming SEWING batches leave the READY queue.
-- Checking audit records in the database.
+- Confirming the batch leaves the READY Sewing Queue.
+- Refreshing pages to confirm database persistence.
+- Inspecting production database records.
+
+This end-to-end testing validated the workflow beyond isolated unit tests.
 
 ---
 
-## 16. Audit Snapshot Validation
+# 9. Production Database Validation
 
-The component-level audit snapshot was manually validated using the database.
+The production application uses Neon PostgreSQL.
 
-A Crop Top production batch was created and verified with a mixture of GREEN and YELLOW results.
+The production database was queried directly to verify the final recipe BOM records.
 
-The batch was approved and the database audit was inspected.
+The final production data contains five components for each recipe and therefore ten recipe component records in total.
 
-The audit snapshot correctly preserved component information including:
+The production BOM was corrected using updates that preserved existing component IDs rather than deleting relational records.
 
-```text
-Front Panel       → GREEN
-Back Panel        → YELLOW
-Sleeve            → GREEN
-Neckline Binding  → GREEN
-Waistband         → GREEN
-```
+This was important because existing verification items referenced those component IDs.
 
-This confirmed that component quantities and statuses were being stored at final decision time.
+After the update, the production database was queried again to confirm the corrected component names and quantities.
 
 ---
 
-## 17. Production Build Validation
+# 10. Production Build and Deployment Validation
 
-The project was repeatedly checked using the Next.js production build command:
+The application was repeatedly validated using:
 
 ```bash
 npm run build
 ```
 
-The final application successfully passed:
+The production build generates the Prisma Client and then performs the Next.js production build.
 
-- Next.js compilation.
-- TypeScript checking.
-- Page-data collection.
-- Static page generation.
-- Final production optimization.
+The final application successfully completed the production build.
 
-This helped identify compile-time and type-related problems before deployment.
+The application was deployed using Railway.
 
----
+The persistent production PostgreSQL database is hosted using Neon.
 
-## 18. Problems Identified During AI-Assisted Development
-
-AI assistance was useful, but generated solutions were not always immediately correct.
-
-Examples encountered during development included:
-
-### Prisma Schema Formatting
-
-An earlier Prisma schema modification used relation formatting that was rejected by the Prisma parser.
-
-The schema was reviewed, corrected, and validated before migration.
-
-### Authentication Navigation
-
-A login implementation successfully authenticated the user but sometimes remained visually stuck on the signing-in state.
-
-The redirect strategy was changed and manually retested.
-
-### Audit Completeness
-
-The initial audit design stored final batch-level information but required improvement to preserve component-level quantities and statuses.
-
-A dedicated audit-item snapshot model was added.
-
-### Testing Dependency Compatibility
-
-The newest Vitest release introduced a dependency conflict with the project's Node type definitions.
-
-Instead of forcing the dependency installation, a compatible Vitest version was selected.
-
-These examples demonstrate why AI-generated recommendations still require developer review and testing.
-
----
-
-## 19. Human Validation of AI Suggestions
-
-AI-generated code was not accepted solely because it compiled.
-
-Changes were validated using several methods:
+The deployment workflow is:
 
 ```text
-Assessment Requirements
+GitHub main branch
         ↓
-Code Review
+Railway automatic deployment
         ↓
-Prisma Validation / Migration
+Next.js production build
         ↓
-Manual Browser Testing
+Railway application
         ↓
-Database Inspection
-        ↓
-Automated Tests
-        ↓
-Production Build
+Neon PostgreSQL database
 ```
 
-This process reduced the risk of accepting an AI suggestion that did not satisfy the actual business requirement.
+The final BOM alignment commit was successfully deployed and became the active Railway deployment.
 
 ---
 
-## 20. Benefits of AI Assistance
+# 11. Git and Iterative Development
+
+Git and GitHub were used throughout development rather than uploading only a single final snapshot.
+
+Changes were separated into iterative commits covering areas such as:
+
+- Initial project setup
+- Database and Prisma implementation
+- Authentication and RBAC
+- Cutting/Verification/Sewing workflow
+- Workflow completion
+- Cloud database configuration
+- Production Prisma Client generation
+- Live deployment documentation
+- Final assessment BOM alignment
+
+This commit history provides evidence of iterative development and correction.
+
+---
+
+# 12. Benefits of AI Assistance
 
 AI assistance provided several benefits during development:
 
-- Faster interpretation of requirements.
-- Faster identification of missing business rules.
-- Support during debugging.
-- Suggestions for safer server-side validation.
-- Assistance with database modeling.
-- Improved testing coverage.
-- Improved documentation.
-- Faster review of repetitive implementation details.
+- Faster requirement interpretation.
+- Faster architecture planning.
+- Assistance with Prisma modeling.
+- Debugging support.
+- Identification of missing business rules.
+- Suggestions for server-side validation.
+- Assistance with automated testing.
+- Documentation review.
+- Deployment troubleshooting.
+- Security and RBAC review.
 
-This was particularly useful for reviewing the interaction between Cutting, Verification, and Sewing workflows.
+AI was particularly useful for reviewing the interaction between Cutting, Verification, and Sewing workflows.
 
 ---
 
-## 21. Limitations of AI Assistance
+# 13. Limitations of AI Assistance
 
-AI-assisted development also has limitations.
+The development process also demonstrated important limitations.
 
-AI-generated code can:
+AI-generated output can:
 
-- Misinterpret requirements.
-- Produce incompatible dependency recommendations.
-- Introduce syntax or configuration errors.
+- Misinterpret assessment requirements.
+- Produce framework-incompatible code.
+- Suggest incorrect dependency versions.
+- Generate code that compiles but behaves incorrectly.
+- Miss important audit requirements.
 - Duplicate existing logic.
 - Suggest unnecessary complexity.
-- Produce code that compiles but does not fully satisfy a business rule.
+- Use inaccurate domain terminology.
+- Produce technically valid solutions that do not exactly match business requirements.
 
-For this reason, the project used AI as a development support tool rather than as a replacement for validation and testing.
+For these reasons, AI output was treated as a draft or recommendation that required developer verification.
 
 ---
 
-## 22. Final Optimization Result
+# 14. Human Validation Process
+
+AI-assisted changes were validated through the following process:
+
+```text
+Official Assessment Specification
+              ↓
+      AI-Assisted Proposal
+              ↓
+         Human Review
+              ↓
+        Code Inspection
+              ↓
+ Prisma Validation / Migration
+              ↓
+    Automated Test Execution
+              ↓
+    Manual Browser Testing
+              ↓
+      Database Inspection
+              ↓
+     Production Build Test
+              ↓
+      Cloud Deployment
+              ↓
+     Live Workflow Check
+```
+
+A suggestion was not considered complete merely because it compiled.
+
+The final behaviour had to satisfy the business requirement.
+
+---
+
+# 15. Final Optimization Result
 
 The final ApparelFlow ERP implementation includes:
 
@@ -486,31 +1063,44 @@ The final ApparelFlow ERP implementation includes:
 - Prisma relational database management.
 - Real authentication.
 - Server-side RBAC.
-- Exact recipe BOM calculations.
+- Cutting Supervisor workflow.
+- Cutting Verifier workflow.
+- Sewing Supervisor workflow.
+- Assessment-aligned recipe BOM calculations.
 - GREEN/YELLOW/RED verification.
 - Explicit final approval.
 - Backend RED hard stop.
+- PENDING hard stop.
 - Mandatory rejection reasons.
 - Re-cut and re-submission workflow.
+- Fabric wastage calculation.
 - Final verification audit records.
 - Component-level audit snapshots.
 - Database-controlled Sewing Queue eligibility.
 - Sewing assembly state transition.
 - Defensive input validation.
-- Demo role access.
+- Visible demo role access.
 - Automated testing.
+- Manual workflow testing.
 - Production build verification.
-
-AI assistance accelerated development and review, while the final behavior was verified through code review, automated tests, manual workflow testing, database inspection, and production compilation.
+- GitHub version control.
+- Railway cloud deployment.
+- Neon production database.
 
 ---
 
-## 23. Conclusion
+# Conclusion
 
-AI-assisted development was valuable in the creation of ApparelFlow ERP, particularly for requirement interpretation, debugging, code review, testing, and documentation.
+AI-assisted development was valuable during the implementation of ApparelFlow ERP, particularly for requirement interpretation, architecture planning, debugging, code review, testing, documentation, and deployment troubleshooting.
 
-However, the development process also demonstrated that AI-generated output must be reviewed rather than accepted automatically.
+However, the project also demonstrated why AI-generated output must not be accepted automatically.
 
-The most important production controls, especially the RED hard stop, RBAC restrictions, audit trail, and Sewing Queue gate, were validated independently through testing.
+Several AI-assisted solutions required correction, including Prisma schema formatting, authentication navigation, audit completeness, dependency compatibility, and exact recipe BOM terminology.
 
-This combination of AI assistance and developer verification produced a more reliable and maintainable implementation for the Webtezza internship technical assessment.
+Human review and refactoring were therefore essential.
+
+The most important production controls — including server-side RBAC, the RED shortage hard stop, PENDING verification protection, mandatory rejection reasons, immutable audit records, and Sewing Queue isolation — were validated through multiple layers of testing.
+
+The final development approach combined AI assistance with human decision-making, automated testing, manual end-to-end testing, database inspection, production compilation, and live deployment validation.
+
+This produced a more reliable implementation while also demonstrating responsible and critical use of AI during software development.
