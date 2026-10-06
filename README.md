@@ -227,6 +227,10 @@ Password: ApparelFlow123!
 
 These credentials are intended for assessment/demo purposes only.
 
+The **Demo Role Access** section on the login page can automatically fill the appropriate demo credentials. It does not bypass authentication. The user must still sign in, and server-side RBAC is applied according to the authenticated account's assigned role.
+
+Public self-registration is intentionally not provided because ApparelFlow ERP represents an internal organizational system. In a production environment, employee accounts and roles would normally be provisioned by an authorized administrator.
+
 ---
 
 ## Authentication
@@ -432,6 +436,7 @@ The tested production-rule functions are used by the application's verification 
 ### Database
 
 - PostgreSQL
+- Neon PostgreSQL for cloud production database hosting
 
 ### Authentication and Security
 
@@ -444,12 +449,14 @@ The tested production-rule functions are used by the application's verification 
 
 - Vitest
 
-### Development Tools
+### Development and Deployment Tools
 
 - Visual Studio Code
 - Git
 - GitHub
 - npm
+- Railway
+- Neon
 
 ---
 
@@ -521,6 +528,8 @@ Do not commit the `.env` file or production credentials to GitHub.
 npx prisma generate
 ```
 
+The production build also generates the Prisma Client automatically before the Next.js build.
+
 ### 5. Apply database migrations
 
 For development:
@@ -569,7 +578,7 @@ Starts the development server.
 npm run build
 ```
 
-Creates an optimized production build.
+Generates the Prisma Client and creates an optimized Next.js production build.
 
 ```bash
 npm start
@@ -599,6 +608,14 @@ The application has been verified using:
 npm run build
 ```
 
+The production build performs:
+
+```text
+Prisma Client Generation
+        ↓
+Next.js Production Build
+```
+
 The production build successfully compiles the following application routes:
 
 ```text
@@ -624,6 +641,8 @@ The application includes several controls designed to protect workflow integrity
 - Final decisions are stored in audit records.
 - Database state checks help prevent duplicate final decisions.
 - Environment secrets are excluded from source control.
+- Demo credentials are provided only for assessment and demonstration.
+- Public self-registration is intentionally disabled for the internal ERP workflow.
 
 ---
 
@@ -660,6 +679,57 @@ https://github.com/mohamedasmar814-arch/apparelflow-erp
 
 ## Deployment
 
-The application is designed for deployment using a cloud-hosted PostgreSQL database and a Next.js-compatible hosting platform.
+ApparelFlow ERP is deployed as a live production application using **Railway** with a cloud-hosted **Neon PostgreSQL** database.
 
-The production deployment URL will be added here after deployment.
+### Live Application
+
+https://apparelflow-erp-production-605a.up.railway.app
+
+### Production Deployment
+
+The production deployment includes:
+
+- Next.js production application hosted on Railway.
+- Neon cloud-hosted PostgreSQL database.
+- Prisma ORM for persistent relational database access.
+- Production environment variables for database connectivity and session security.
+- Server-side authentication.
+- Role-Based Access Control (RBAC).
+- Persistent Cutting, Verification, and Sewing workflow data.
+- Automated Prisma Client generation during the cloud production build.
+
+The live application can be tested using the demo accounts documented in the **Demo Credentials** section.
+
+### Live Workflow
+
+The deployed application supports the complete production workflow:
+
+```text
+Cutting Supervisor
+        ↓
+Production Batch Creation
+        ↓
+Verification Officer
+        ↓
+Component Verification
+        ↓
+GREEN / YELLOW / RED
+        ↓
+Final Approval or Rejection
+        ↓
+Approved READY Batch
+        ↓
+Sewing Supervisor
+        ↓
+Start Sewing Assembly
+        ↓
+SEWING
+```
+
+A component shortage produces a RED status and creates a hard stop that prevents approval.
+
+Rejected batches can be returned to Cutting for re-cutting and resubmitted for verification.
+
+Only batches explicitly approved by the Verification Officer receive `READY` status and become visible in the Sewing Queue.
+
+After **Start Sewing Assembly** is selected, the batch changes from `READY` to `SEWING` and is removed from the READY Sewing Queue.w
