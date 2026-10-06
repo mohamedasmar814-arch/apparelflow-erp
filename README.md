@@ -14,7 +14,7 @@ ApparelFlow ERP solves this problem by introducing a verification gate between t
 
 The workflow is:
 
-**Cutting Supervisor → Verification Officer → Sewing Supervisor**
+**Cutting Supervisor → Cutting Verifier → Sewing Supervisor**
 
 A batch cannot enter the Sewing Queue until all required components have been verified and no component has a shortage.
 
@@ -36,9 +36,9 @@ The Cutting Supervisor can:
 - View rejected batches and rejection reasons.
 - Re-submit a batch after re-cutting.
 
-### Verification Officer
+### Cutting Verifier
 
-The Verification Officer can:
+The Cutting Verifier can:
 
 - View batches waiting for verification.
 - Enter the actual quantity of each garment component.
@@ -55,7 +55,7 @@ The Sewing Supervisor can:
 - View only approved `READY` production batches.
 - View recipe and production information.
 - View verification results.
-- View the Verification Officer responsible for approval.
+- View the Cutting Verifier responsible for approval.
 - View verification timestamps.
 - Start Sewing Assembly.
 
@@ -77,7 +77,7 @@ GREEN and YELLOW components are eligible for final approval.
 
 A RED component creates a **hard stop** and prevents batch approval.
 
-Component verification itself does not automatically approve a batch. The Verification Officer must explicitly make the final approval decision.
+Component verification itself does not automatically approve a batch. The Cutting Verifier must explicitly make the final approval decision.
 
 ---
 
@@ -91,7 +91,7 @@ A batch can be approved only when:
 2. Every component has been verified.
 3. No component has `PENDING` status.
 4. No component has `RED` status.
-5. The Verification Officer explicitly approves the batch.
+5. The Cutting Verifier explicitly approves the batch.
 
 The approval restriction is enforced on the backend as well as represented in the user interface. Therefore, bypassing a disabled UI button cannot allow a RED batch into the Sewing Queue.
 
@@ -187,7 +187,7 @@ Three roles are available:
 | Role | Authorized Workflow |
 |---|---|
 | Cutting Supervisor | Cutting batch management |
-| Verification Officer | Component verification and final batch decisions |
+| Cutting Verifier | Component verification and final batch decisions |
 | Sewing Supervisor | Sewing Queue and assembly start |
 
 Authorization checks are performed on the server. A user cannot gain access to another production workflow simply by navigating directly to its URL.
@@ -211,7 +211,7 @@ Email: cutting@apparelflow.com
 Password: ApparelFlow123!
 ```
 
-### Verification Officer
+### Cutting Verifier
 
 ```text
 Email: verification@apparelflow.com
@@ -299,7 +299,7 @@ Final approval and rejection decisions create audit records.
 A final audit stores information including:
 
 - Production batch.
-- Verification Officer.
+- Cutting Verifier.
 - Approval or rejection decision.
 - Rejection reason when applicable.
 - Actual fabric usage.
@@ -709,7 +709,7 @@ Cutting Supervisor
         ↓
 Production Batch Creation
         ↓
-Verification Officer
+Cutting Verifier
         ↓
 Component Verification
         ↓
@@ -730,6 +730,6 @@ A component shortage produces a RED status and creates a hard stop that prevents
 
 Rejected batches can be returned to Cutting for re-cutting and resubmitted for verification.
 
-Only batches explicitly approved by the Verification Officer receive `READY` status and become visible in the Sewing Queue.
+Only batches explicitly approved by the Cutting Verifier receive `READY` status and become visible in the Sewing Queue.
 
 After **Start Sewing Assembly** is selected, the batch changes from `READY` to `SEWING` and is removed from the READY Sewing Queue.

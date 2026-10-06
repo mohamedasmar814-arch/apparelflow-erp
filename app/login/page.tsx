@@ -22,7 +22,7 @@ const demoRoles: DemoRole[] = [
     icon: "✂️",
   },
   {
-    title: "Verification Officer",
+    title: "Cutting Verifier",
     description: "Verify components and approve or reject production batches.",
     email: "verification@apparelflow.com",
     icon: "✅",

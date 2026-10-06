@@ -103,7 +103,7 @@ export default async function SewingPage() {
 
             <p className="mt-2 text-sm text-slate-400">
               A batch will appear here only after verification is
-              completed and the Verification Officer explicitly
+              completed and the Cutting Verifier explicitly
               approves it.
             </p>
           </div>
@@ -255,7 +255,7 @@ export default async function SewingPage() {
 
                   <p className="mt-1 text-sm text-slate-400">
                     This batch was explicitly approved by the
-                    Verification Officer and is eligible to begin
+                    Cutting Verifier and is eligible to begin
                     sewing assembly.
                   </p>
                 </div>
