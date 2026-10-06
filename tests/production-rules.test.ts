@@ -9,7 +9,19 @@ import {
 } from "../lib/production-rules";
 
 describe("ApparelFlow Production Batch Verification", () => {
-  it("allows successful approval when all components are GREEN or YELLOW", () => {
+  it("allows successful approval when all components are GREEN", () => {
+    const statuses = [
+      "GREEN",
+      "GREEN",
+      "GREEN",
+      "GREEN",
+      "GREEN",
+    ] as const;
+
+    expect(canApproveBatch([...statuses])).toBe(true);
+  });
+
+  it("allows approval when components are GREEN or YELLOW with no shortages", () => {
     const statuses = [
       "GREEN",
       "YELLOW",
@@ -33,18 +45,30 @@ describe("ApparelFlow Production Batch Verification", () => {
     expect(canApproveBatch([...statuses])).toBe(false);
   });
 
+  it("blocks batch approval when any component is still PENDING", () => {
+    const statuses = [
+      "GREEN",
+      "GREEN",
+      "PENDING",
+      "GREEN",
+      "GREEN",
+    ] as const;
+
+    expect(canApproveBatch([...statuses])).toBe(false);
+  });
+
   it("rejects a batch rejection when no reason is provided", () => {
     expect(hasValidRejectionReason("")).toBe(false);
     expect(hasValidRejectionReason("   ")).toBe(false);
 
     expect(
       hasValidRejectionReason(
-        "Front Panel shortage requires re-cutting."
+        "Front Body Panel shortage requires re-cutting."
       )
     ).toBe(true);
   });
 
-  it("prevents unauthorized roles from verifying components", () => {
+  it("prevents non-verifier roles from verifying components", () => {
     expect(canVerifyComponents("CUTTING")).toBe(false);
     expect(canVerifyComponents("SEWING")).toBe(false);
     expect(canVerifyComponents("VERIFICATION")).toBe(true);
@@ -52,11 +76,7 @@ describe("ApparelFlow Production Batch Verification", () => {
 
   it("isolates the Sewing Queue to READY batches only", () => {
     expect(isEligibleForSewingQueue("READY")).toBe(true);
-
-    expect(
-      isEligibleForSewingQueue("PENDING_VERIFICATION")
-    ).toBe(false);
-
+    expect(isEligibleForSewingQueue("PENDING_VERIFICATION")).toBe(false);
     expect(isEligibleForSewingQueue("REJECTED")).toBe(false);
     expect(isEligibleForSewingQueue("CUTTING")).toBe(false);
     expect(isEligibleForSewingQueue("SEWING")).toBe(false);
