@@ -117,10 +117,10 @@ Components:
 
 | Component | Quantity Per Garment |
 |---|---:|
-| Front Panel | 1 |
-| Back Panel | 1 |
-| Sleeve | 2 |
-| Collar | 1 |
+| Front Body Panel | 1 |
+| Back Body Panel | 1 |
+| Sleeves (Left & Right) | 2 |
+| Collar & Stand | 1 |
 | Sleeve Cuffs | 2 |
 
 ### REC-CT02 — Crop Top
@@ -137,11 +137,11 @@ Components:
 
 | Component | Quantity Per Garment |
 |---|---:|
-| Front Panel | 1 |
-| Back Panel | 1 |
-| Sleeve | 2 |
-| Neckline Binding | 1 |
-| Waistband | 1 |
+| Front Chest Panel | 1 |
+| Back Support Panel | 1 |
+| Neck Binding Strip | 1 |
+| Hem Elastic Casing | 1 |
+| Side Strap Accents | 2 |
 
 Expected component quantity is calculated using:
 
@@ -154,7 +154,7 @@ Example:
 For 10 Casual Blouses:
 
 ```text
-Sleeves = 10 × 2 = 20
+Sleeves (Left & Right) = 10 × 2 = 20
 ```
 
 ---
@@ -732,4 +732,4 @@ Rejected batches can be returned to Cutting for re-cutting and resubmitted for v
 
 Only batches explicitly approved by the Verification Officer receive `READY` status and become visible in the Sewing Queue.
 
-After **Start Sewing Assembly** is selected, the batch changes from `READY` to `SEWING` and is removed from the READY Sewing Queue.w
+After **Start Sewing Assembly** is selected, the batch changes from `READY` to `SEWING` and is removed from the READY Sewing Queue.

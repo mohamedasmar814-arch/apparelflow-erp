@@ -20,6 +20,72 @@ const prisma = new PrismaClient({
   adapter,
 });
 
+async function renameExistingComponent(
+  recipeId: number,
+  oldName: string,
+  newName: string,
+  requiredQty: number,
+) {
+  const oldComponent = await prisma.recipeComponent.findUnique({
+    where: {
+      recipeId_name: {
+        recipeId,
+        name: oldName,
+      },
+    },
+  });
+
+  const newComponent = await prisma.recipeComponent.findUnique({
+    where: {
+      recipeId_name: {
+        recipeId,
+        name: newName,
+      },
+    },
+  });
+
+  // Existing database:
+  // Rename the old component in place so its ID and relationships survive.
+  if (oldComponent && !newComponent) {
+    await prisma.recipeComponent.update({
+      where: {
+        id: oldComponent.id,
+      },
+      data: {
+        name: newName,
+        requiredQty,
+      },
+    });
+
+    return;
+  }
+
+  // Already corrected database:
+  // Just make sure the multiplier is correct.
+  if (newComponent) {
+    await prisma.recipeComponent.update({
+      where: {
+        id: newComponent.id,
+      },
+      data: {
+        requiredQty,
+      },
+    });
+
+    return;
+  }
+
+  // Fresh database:
+  // Create the correct component.
+  await prisma.recipeComponent.create({
+    data: {
+      recipeId,
+      name: newName,
+      requiredQty,
+    },
+  });
+}
+
 async function main() {
   console.log("Starting ApparelFlow database seed...");
 
@@ -81,8 +147,7 @@ async function main() {
   });
 
   // -------------------------------------------------------
-  // CASUAL BLOUSE
-  // REC-BL01
+  // CASUAL BLOUSE — REC-BL01
   // Standard fabric: 1.8 yards per garment
   // Wastage cap: 5%
   // -------------------------------------------------------
@@ -106,51 +171,43 @@ async function main() {
     },
   });
 
-  const blouseComponents = [
-    {
-      name: "Front Panel",
-      requiredQty: 1,
-    },
-    {
-      name: "Back Panel",
-      requiredQty: 1,
-    },
-    {
-      name: "Sleeve",
-      requiredQty: 2,
-    },
-    {
-      name: "Collar",
-      requiredQty: 1,
-    },
-    {
-      name: "Sleeve Cuffs",
-      requiredQty: 2,
-    },
-  ];
+  await renameExistingComponent(
+    casualBlouse.id,
+    "Front Panel",
+    "Front Body Panel",
+    1,
+  );
 
-  for (const component of blouseComponents) {
-    await prisma.recipeComponent.upsert({
-      where: {
-        recipeId_name: {
-          recipeId: casualBlouse.id,
-          name: component.name,
-        },
-      },
-      update: {
-        requiredQty: component.requiredQty,
-      },
-      create: {
-        recipeId: casualBlouse.id,
-        name: component.name,
-        requiredQty: component.requiredQty,
-      },
-    });
-  }
+  await renameExistingComponent(
+    casualBlouse.id,
+    "Back Panel",
+    "Back Body Panel",
+    1,
+  );
+
+  await renameExistingComponent(
+    casualBlouse.id,
+    "Sleeve",
+    "Sleeves (Left & Right)",
+    2,
+  );
+
+  await renameExistingComponent(
+    casualBlouse.id,
+    "Collar",
+    "Collar & Stand",
+    1,
+  );
+
+  await renameExistingComponent(
+    casualBlouse.id,
+    "Sleeve Cuffs",
+    "Sleeve Cuffs",
+    2,
+  );
 
   // -------------------------------------------------------
-  // CROP TOP
-  // REC-CT02
+  // CROP TOP — REC-CT02
   // Standard fabric: 1.1 yards per garment
   // Wastage cap: 8%
   // -------------------------------------------------------
@@ -174,49 +231,44 @@ async function main() {
     },
   });
 
-  const cropTopComponents = [
-    {
-      name: "Front Panel",
-      requiredQty: 1,
-    },
-    {
-      name: "Back Panel",
-      requiredQty: 1,
-    },
-    {
-      name: "Sleeve",
-      requiredQty: 2,
-    },
-    {
-      name: "Neckline Binding",
-      requiredQty: 1,
-    },
-    {
-      name: "Waistband",
-      requiredQty: 1,
-    },
-  ];
+  await renameExistingComponent(
+    cropTop.id,
+    "Front Panel",
+    "Front Chest Panel",
+    1,
+  );
 
-  for (const component of cropTopComponents) {
-    await prisma.recipeComponent.upsert({
-      where: {
-        recipeId_name: {
-          recipeId: cropTop.id,
-          name: component.name,
-        },
-      },
-      update: {
-        requiredQty: component.requiredQty,
-      },
-      create: {
-        recipeId: cropTop.id,
-        name: component.name,
-        requiredQty: component.requiredQty,
-      },
-    });
-  }
+  await renameExistingComponent(
+    cropTop.id,
+    "Back Panel",
+    "Back Support Panel",
+    1,
+  );
+
+  await renameExistingComponent(
+    cropTop.id,
+    "Neckline Binding",
+    "Neck Binding Strip",
+    1,
+  );
+
+  await renameExistingComponent(
+    cropTop.id,
+    "Waistband",
+    "Hem Elastic Casing",
+    1,
+  );
+
+  await renameExistingComponent(
+    cropTop.id,
+    "Sleeve",
+    "Side Strap Accents",
+    2,
+  );
 
   console.log("ApparelFlow database seeded successfully.");
+  console.log("");
+  console.log("Recipes synchronized with the assessment BOM.");
   console.log("");
   console.log("Demo accounts:");
   console.log("Cutting: cutting@apparelflow.com");
